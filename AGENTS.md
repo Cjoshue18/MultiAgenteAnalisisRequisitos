@@ -102,19 +102,19 @@ Todo commit en este repositorio debe seguir estrictamente el siguiente formato:
 prefijo(contexto): descripcion
 ```
 
-- **`prefijo` (en inglés):** Tipo de cambio realizado.
+- **`prefijo` (en inglés):** Tipo de cambio realizado (`feat`, `fix`, `docs`, `test`, `refactor`, `chore`).
   - `feat`: Nueva funcionalidad, subagente o capacidad.
   - `fix`: Corrección de un error o bug.
   - `docs`: Cambios o adiciones en documentación.
   - `test`: Creación o actualización de pruebas unitarias o fixtures.
   - `refactor`: Refactorización de código sin alterar su comportamiento.
   - `chore`: Tareas de mantenimiento, dependencias o configuración.
-- **`contexto` (módulo modificado):** Componente afectado (e.g., `orchestrator`, `rf-agent`, `rnf-agent`, `inconsistency-agent`, `use-case-agent`, `schemas`, `graph`, `api`, `ui`).
-- **`descripcion`:** Resumen corto en minúsculas y modo imperativo describiendo el cambio realizado.
+- **`contexto` (en inglés/código):** Módulo o componente modificado (e.g., `orchestrator`, `rf-agent`, `rnf-agent`, `inconsistency-agent`, `use-case-agent`, `schemas`, `graph`, `api`, `ui`).
+- **`descripcion` (OBLIGATORIAMENTE en español):** Es la **única parte del commit que debe ir en español**. Resumen corto en minúsculas y modo imperativo describiendo claramente qué se hizo.
 
 ### Ejemplos Válidos:
-- `feat(rf-agent): implement structured output with pydantic schema`
-- `test(inconsistency-agent): add unit tests with static mock fixtures`
-- `docs(specs): add master proposal and week 13 documentation`
-- `fix(schemas): enforce iso 25010 category validation in rnf model`
-- `refactor(graph): decouple state transitions from agent logic`
+- `feat(rf-agent): implementar salida estructurada con esquema pydantic`
+- `test(inconsistency-agent): agregar pruebas unitarias con fixtures estaticas de mocks`
+- `docs(specs): agregar propuesta maestra y documentacion de semana 13`
+- `fix(schemas): forzar validacion de categorias iso 25010 en modelo rnf`
+- `refactor(graph): desacoplar transiciones de estado de la logica del agente`

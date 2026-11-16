@@ -1,0 +1,1 @@
+"""Servicios externos: clientes de LLM y utilidades de inferencia."""

@@ -1,0 +1,1 @@
+"""Esquemas Pydantic v2 y GraphState (contratos SDD)."""

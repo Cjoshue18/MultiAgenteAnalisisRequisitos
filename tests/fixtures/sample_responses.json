@@ -1,0 +1,52 @@
+{
+  "rf": [
+    {
+      "id": "RF-01",
+      "nombre": "Iniciar sesion",
+      "descripcion": "El sistema debe permitir al usuario autenticarse con correo y contraseña.",
+      "actores": [
+        "Usuario"
+      ],
+      "referencia_texto": "El usuario puede iniciar sesión"
+    }
+  ],
+  "rnf": [
+    {
+      "id": "RNF-01",
+      "categoria_iso": "Seguridad",
+      "descripcion": "El acceso debe requerir autenticación multifactor.",
+      "metrica_objetiva": "Tiempo de autenticación",
+      "valor_umbral": "< 2 segundos"
+    }
+  ],
+  "inconsistencias": [
+    {
+      "tipo": "ambigüedad",
+      "severidad": "Media",
+      "elementos_afectados": "RF-01",
+      "descripcion_problema": "Término vago: 'rápido'",
+      "pregunta_clarificacion": "¿Cuál es el tiempo máximo de respuesta aceptable?"
+    }
+  ],
+  "cus": [
+    {
+      "id": "CUS-01",
+      "nombre": "Iniciar sesión",
+      "actor_principal": "Usuario",
+      "precondiciones": [
+        "Usuario registrado en el sistema"
+      ],
+      "flujo_principal": [
+        "1. Usuario ingresa credenciales",
+        "2. Sistema valida credenciales",
+        "3. Sistema otorga acceso"
+      ],
+      "flujos_alternativos": [
+        "2a. Credenciales incorrectas: mostrar error"
+      ],
+      "postcondiciones": [
+        "Sesión de usuario iniciada"
+      ]
+    }
+  ]
+}

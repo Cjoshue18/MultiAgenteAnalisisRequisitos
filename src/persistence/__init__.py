@@ -1,0 +1,1 @@
+"""Capa de persistencia desacoplada: SQLite + SQLAlchemy."""

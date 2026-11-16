@@ -91,6 +91,12 @@ env/
 venv/
 ENV/
 
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+analisis.db
+
 # IDE
 .idea/
 .vscode/

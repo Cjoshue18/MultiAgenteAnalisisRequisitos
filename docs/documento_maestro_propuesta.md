@@ -131,11 +131,11 @@ Se encarga de identificar qué debe hacer el sistema. Extrae requisitos funciona
 ### 6.3. Subagente 2: Analizador de Requisitos No Funcionales (RNF)
 Se encarga de identificar restricciones técnicas y atributos de calidad. Clasifica cada requerimiento dentro de las ocho características de la norma **ISO/IEC 25010** (Rendimiento, Seguridad, Fiabilidad, Usabilidad, Compatibilidad, Mantenibilidad, Escalabilidad y Portabilidad) y tiene la responsabilidad explícita de convertir adjetivos abstractos en métricas cuantificables con unidades verificables.
 
-### 6.4. Subagente 4: Modelador de Casos de Uso (CUS)
-Toma los requisitos funcionales aprobados y modela los casos de uso del sistema. Genera especificaciones formales que contienen: identificador único, nombre del caso de uso, actor detonador, precondiciones requeridas, secuencia numerada del flujo principal de eventos, flujos alternativos ante errores y postcondiciones del sistema.
+### 6.4. Subagente 3: Detector de Inconsistencias y Ambigüedades
+Analiza de manera cruzada la entrada del usuario frente a las extracciones de requisitos funcionales y no funcionales. Su función es descubrir contradicciones lógicas entre requisitos, ambigüedades léxicas y vacíos de información. Para cada hallazgo, asigna una severidad (Alta, Media o Baja) y redacta una pregunta de clarificación orientada a resolver la incertidumbre antes de modelar los casos de uso.
 
-### 6.5. Subagente 3: Detector de Inconsistencias y Ambigüedades
-Analiza de manera cruzada la entrada del usuario frente a las salidas de los otros tres subagentes. Su función es descubrir contradicciones lógicas entre requisitos, ambigüedades léxicas y vacíos de información. Para cada hallazgo, asigna una severidad (Alta, Media o Baja) y redacta una pregunta de clarificación orientada a resolver la incertidumbre.
+### 6.5. Subagente 4: Modelador de Casos de Uso (CUS)
+Toma los requisitos funcionales depurados y modela los casos de uso del sistema. Genera especificaciones formales que contienen: identificador único, nombre del caso de uso, actor detonador, precondiciones requeridas, secuencia numerada del flujo principal de eventos, flujos alternativos ante errores y postcondiciones del sistema.
 
 ---
 
@@ -187,7 +187,18 @@ El agente principal actúa como mediador central. Los subagentes no se comunican
 ### 9.3. Patrón Puertos y Adaptadores (Persistencia Desacoplada)
 Para la persistencia se utiliza una interfaz intermedia con SQLAlchemy. Los agentes solo conocen la orden general de guardar o consultar. Para el prototipo académico se conecta al adaptador de **SQLite local**, pero la arquitectura queda preparada para conectarse a una base de datos en la nube (como PostgreSQL en AWS o Azure) simplemente modificando la cadena de conexión en el archivo de configuración, sin modificar el código de los agentes.
 
-### 9.4. Justificación de Trade-offs Arquitectónicos
+### 9.4. Patrón Adaptador para Modelos de Lenguaje (LLM Adapter)
+Aísla la dependencia directa con el SDK del proveedor de IA (Google Gemini API). Mediante un adaptador común de inferencia, el sistema puede cambiar de proveedor o incorporar modelos alternativos de respaldo (como Groq, Ollama o NVIDIA NIM) sin alterar los prompts, los contratos de datos ni la lógica interna de los subagentes.
+
+### 9.5. Patrón Estrategia (Strategy para Procesamiento de Entradas)
+Permite seleccionar dinámicamente el algoritmo de ingestión y preprocesamiento según la extensión y formato de la entrada:
+* *Estrategia Directa:* Para solicitudes breves (< 1,000 palabras), procesa el texto en memoria en una sola ventana de contexto.
+* *Estrategia de Segmentación (Chunking con Solapamiento):* Para documentos extensos (.pdf, .txt extensos), fragmenta el texto en secciones coherentes antes de enviarlas al grafo concurrente de extracción.
+
+### 9.6. Patrón Fachada (Facade)
+El módulo orquestador expone una interfaz simplificada hacia la API REST (`iniciar_analisis_pipeline`), encapsulando la complejidad de instanciación del grafo de LangGraph, la inyección del estado inicial, el control de checkpoints y la gestión de reintentos.
+
+### 9.7. Justificación de Trade-offs Arquitectónicos
 * **SQLite vs. Nube (AWS / Azure):** Se optó por SQLite local porque desplegar una base de datos en la nube para una herramienta de analista individual representaba sobreingeniería, agregaba costos innecesarios y aumentaba la latencia de red en cada paso del grafo. SQLite garantiza máxima velocidad y reproducibilidad en cualquier computadora.
 * **Streamlit vs. HTML/CSS/JavaScript:** Se seleccionó Streamlit para mantener un stack 100% en Python, reduciendo los tiempos de maquetado web y permitiendo al equipo concentrar el esfuerzo técnico en la lógica de los agentes y en la calidad del análisis.
 
@@ -200,17 +211,18 @@ Para la persistencia se utiliza una interfaz intermedia con SQLAlchemy. Los agen
 | **RF01** | El sistema debe permitir el ingreso de solicitudes de requisitos mediante texto directo o carga de archivos (.txt, .md, .pdf). |
 | **RF02** | El sistema debe validar que la entrada tenga contenido suficiente antes de iniciar el análisis. |
 | **RF03** | El agente principal debe coordinar la ejecución concurrente de los subagentes mediante un grafo de LangGraph. |
-| **RF04** | El Subagente 1 debe extraer requisitos funcionales atómicos, asociando actores y citas textuales del documento original. |
+| **RF04** | El Subagente 1 debe extraer requisitos funcionales atómicos bajo IEEE 29148, asociando actores y citas textuales del documento original. |
 | **RF05** | El Subagente 2 debe clasificar requisitos no funcionales bajo la norma ISO/IEC 25010, asignando métricas objetivas cuantificables. |
-| **RF06** | El Subagente 4 debe modelar casos de uso con identificador, actor, precondiciones, flujo principal, alternativos y postcondiciones. |
-| **RF07** | El Subagente 3 debe detectar inconsistencias, contradicciones y ambigüedades, catalogándolas por nivel de severidad. |
-| **RF08** | El Subagente 3 debe redactar preguntas de clarificación dirigidas a resolver los vacíos de información detectados. |
-| **RF09** | El sistema debe permitir al analista revisar, editar requisitos, responder preguntas de clarificación e ingresar comentarios antes de la aprobación final. |
-| **RF10** | El sistema debe requerir la aprobación explícita del analista humano para formalizar el reporte de requisitos. |
-| **RF11** | El sistema debe persistir los análisis, requisitos identificados, inconsistencias y trazas de auditoría en la base de datos local. |
-| **RF12** | El sistema debe permitir consultar el historial de análisis realizados previamente. |
-| **RF13** | El sistema debe exportar el reporte consolidado en Markdown y JSON como base obligatoria, y opcionalmente en PDF y Word. |
-| **RF14** | El sistema debe capturar y notificar errores producidos durante la comunicación con los servicios de inteligencia artificial. |
+| **RF06** | El Subagente 3 debe detectar inconsistencias, contradicciones y ambigüedades semánticas, catalogándolas por nivel de severidad. |
+| **RF07** | El Subagente 3 debe redactar preguntas de clarificación dirigidas a resolver los vacíos de información detectados. |
+| **RF08** | El Subagente 4 debe modelar casos de uso con identificador, actor, precondiciones, flujo principal numerado, alternativos y postcondiciones. |
+| **RF09** | El agente principal debe consolidar e integrar las salidas estructuradas de los subagentes en una especificación unificada preliminar. |
+| **RF10** | El sistema debe permitir al analista humano revisar, editar requisitos, responder preguntas de clarificación e ingresar comentarios. |
+| **RF11** | El sistema debe requerir la aprobación explícita del analista humano para formalizar el reporte final de requisitos. |
+| **RF12** | El sistema debe persistir los análisis, requisitos identificados, inconsistencias, casos de uso y trazas de ejecución en la base de datos local SQLite. |
+| **RF13** | El sistema debe permitir consultar el historial de análisis realizados previamente. |
+| **RF14** | El sistema debe exportar el reporte consolidado en Markdown y JSON como base obligatoria, y opcionalmente en PDF y Word. |
+| **RF15** | El sistema debe capturar, registrar y notificar errores producidos durante la validación de entrada, fallos de API de IA o violaciones de esquemas de datos. |
 
 ---
 
@@ -218,14 +230,17 @@ Para la persistencia se utiliza una interfaz intermedia con SQLAlchemy. Los agen
 
 | Código | Requisito No Funcional | Atributo ISO 25010 | Métrica / Criterio Objetivo |
 | :--- | :--- | :--- | :--- |
-| **RNF01** | Arquitectura modular desacoplada. | Mantenibilidad | Posibilidad de incorporar un nuevo subagente sin modificar el código interno de los existentes. |
-| **RNF02** | Validación estricta de esquemas entre agentes. | Confiabilidad | Validación previa de todos los datos intercambiados entre subagentes mediante esquemas estructurados. |
-| **RNF03** | Gestión segura de claves de acceso. | Seguridad | Las claves de la API de IA no deben estar en el código fuente; se cargan desde variables de entorno (.env). |
-| **RNF04** | Registro de auditoría y observabilidad. | Mantenibilidad | Registro persistente de fecha, hora, estado de ejecución y tiempos de respuesta de cada subagente. |
-| **RNF05** | Tiempo de procesamiento del análisis. | Rendimiento | Tiempo de ejecución total menor o igual a 60 segundos para documentos de prueba de hasta 1,000 palabras. |
-| **RNF06** | Trazabilidad de los requisitos extraídos. | Adecuación Funcional | Cada requisito funcional debe contener la referencia textual exacta de la oración que lo originó. |
-| **RNF07** | Recuperación y reproducibilidad del estado. | Fiabilidad | Capacidad de reanudar la ejecución desde el último punto de control guardado ante una interrupción. |
-| **RNF08** | Portabilidad de la solución. | Portabilidad | Ejecución completa en entorno local sin necesidad de instalar servicios de bases de datos externas. |
+| **RNF01** | Arquitectura modular desacoplada. | Mantenibilidad | Incorporación de un nuevo subagente sin alterar el código de los nodos preexistentes en el grafo. |
+| **RNF02** | Validación y sanitización en frontera de entrada. | Seguridad | Rechazo y sanitización del 100% de entradas que contengan caracteres de inyección de instrucciones o formatos no autorizados. |
+| **RNF03** | Validación estricta de esquemas entre agentes. | Confiabilidad | Validación previa de todos los datos intercambiados mediante esquemas tipados (Pydantic); 0 estados corruptos en el grafo. |
+| **RNF04** | Gestión segura de claves de acceso. | Seguridad | Las claves de la API de IA no deben exponerse en código fuente; se cargan exclusivamente desde variables de entorno (.env). |
+| **RNF05** | Registro de auditoría y observabilidad. | Mantenibilidad | Registro persistente de marca de tiempo, subagente ejecutado, estado, latencia y tokens consumidos en cada etapa. |
+| **RNF06** | Tiempo de procesamiento del análisis. | Rendimiento | Tiempo de ejecución total menor o igual a 60 segundos para documentos de prueba de hasta 1,000 palabras. |
+| **RNF07** | Presentación estructurada y uniforme de resultados. | Usabilidad | Los requisitos, inconsistencias y casos de uso deben desplegarse en matrices tabulares estandarizadas y ordenadas por severidad. |
+| **RNF08** | Trazabilidad de los requisitos extraídos. | Adecuación Funcional | El 100% de los requisitos funcionales extraídos debe incluir la referencia textual exacta de la oración que lo originó. |
+| **RNF09** | Recuperación y tolerancia a fallos por checkpoints. | Fiabilidad | Capacidad de reanudar la ejecución desde el último punto de control guardado en SQLite tras un fallo de red o API. |
+| **RNF10** | Eficiencia en recuperación de historial. | Rendimiento | Tiempo de consulta y recuperación de un análisis previamente almacenado menor o igual a 2.0 segundos. |
+| **RNF11** | Portabilidad de la solución. | Portabilidad | Ejecución local autónoma en entornos estándar con Python 3.11+ sin requerir servidores de base de datos externos. |
 
 ---
 
@@ -246,15 +261,17 @@ Actor principal: Analista de Requisitos o Usuario del sistema.
 
 ## 13. REGLAS DE NEGOCIO
 * **RN01:** No se puede iniciar un análisis si la solicitud está vacía o contiene menos de 20 caracteres significativos.
-* **RN02:** Cada análisis debe poseer un identificador único generado automáticamente por el sistema.
-* **RN03:** Cada requisito funcional debe identificarse con un código unívoco y correlativo (`RF01`, `RF02`, etc.) que no se reutiliza tras una eliminación.
-* **RN04:** Todo requisito funcional debe tener asociado como mínimo un actor y una cita textual del documento original.
-* **RN05:** Los requisitos no funcionales deben clasificarse obligatoriamente bajo alguna de las categorías de la norma ISO/IEC 25010 y contar con una métrica cuantificable.
-* **RN06:** Toda inconsistencia detectada debe acompañarse de su nivel de severidad y de una propuesta de pregunta de clarificación.
-* **RN07:** Los resultados generados por los agentes se consideran propuestas preliminares hasta que el analista confirme la aprobación humana.
-* **RN08:** No se podrá exportar el reporte en estado final si no ha pasado por el proceso de aprobación humana o confirmación de revisión.
-* **RN09:** Si la llamada a la API de IA genera un error temporal de conexión, el sistema aplicará una política controlada de hasta dos reintentos antes de reportar el fallo.
-* **RN10:** Los contratos de intercambio de datos entre agentes deben ser estrictos; ninguna respuesta no tipada es aceptada en el estado compartido.
+* **RN02:** Los archivos cargados deben pertenecer a los formatos permitidos (.txt, .md, .pdf) y no exceder un tamaño límite de 10 MB o 10,000 palabras por solicitud.
+* **RN03:** Cada análisis debe poseer un identificador único generado automáticamente por el sistema.
+* **RN04:** Cada requisito funcional debe identificarse con un código unívoco y correlativo (`RF01`, `RF02`, etc.) que no se reutiliza tras una eliminación.
+* **RN05:** Todo requisito funcional debe tener asociado obligatoriamente al menos un actor identificado y una cita textual del documento fuente.
+* **RN06:** Los requisitos no funcionales deben clasificarse mandatoriamente bajo alguna de las categorías de la norma ISO/IEC 25010 y contar con una métrica cuantificable.
+* **RN07:** Toda inconsistencia detectada debe acompañarse de su nivel de severidad (Alta, Media, Baja) y de una propuesta de pregunta de clarificación.
+* **RN08:** Los resultados generados por los agentes se consideran propuestas preliminares hasta que el analista humano confirme la aprobación formal.
+* **RN09:** Una vez aprobado un análisis, sus registros en la base de datos adquieren estado inmutable; el sistema no permitirá su sobreescritura directa sin generar una nueva versión correlativa del análisis.
+* **RN10:** No se podrá exportar el reporte en estado final consolidado si no ha superado el proceso de revisión y aprobación humana.
+* **RN11:** Si la llamada a la API de IA genera un error temporal de conexión o saturación de cuota (HTTP 429/503), el sistema aplicará una política controlada de hasta dos reintentos antes de registrar el fallo.
+* **RN12:** Los contratos de intercambio de datos entre agentes deben ser estrictos; ninguna respuesta no tipada es aceptada en el estado compartido.
 
 ---
 
@@ -287,6 +304,7 @@ El modelo de dominio representa los conceptos fundamentales del negocio y sus re
 * **Proyecto:** Agrupa la documentación y solicitudes asociadas a un sistema particular.
 * **Documento / Entrada:** Contiene el texto original o archivo proporcionado como fuente del análisis.
 * **Analisis:** Entidad central que registra una corrida del pipeline multiagente, su fecha, estado y tiempo de respuesta.
+* **TareaAgente / TrazaEjecucion:** Registra cada ejecución individual de un subagente dentro del análisis, almacenando el identificador del nodo, marcas de tiempo de inicio y fin, latencia en segundos, tokens estimados y estado de salida (Completado / Reintento / Fallido), garantizando la observabilidad exigida por RNF05.
 * **Requisito:** Clase base de especificación, especializada en **RequisitoFuncional** (con actores y citas de origen) y **RequisitoNoFuncional** (con categoría ISO y métricas).
 * **CasoUso:** Modelado operacional asociado directamente a los requisitos funcionales identificados.
 * **Inconsistencia:** Hallazgo semántico que señala un defecto o vacío, vinculado a los requisitos afectados.
@@ -353,6 +371,7 @@ Para evaluar la efectividad técnica del sistema durante las pruebas de la soluc
 * **Precisión en la Identificación de Requisitos:** Porcentaje de requisitos funcionales generados por el sistema que resultan válidos frente a una especificación de referencia revisada por un analista.
 * **Cobertura de Requisitos:** Porcentaje de requisitos indispensables de la solicitud original que fueron capturados con éxito por los agentes.
 * **Tasa de Detección de Inconsistencias:** Porcentaje de ambigüedades y contradicciones conocidas que el Subagente 3 fue capaz de revelar.
+* **Consistencia y Estabilidad de Resultados:** Grado de coincidencia semántica obtenido al procesar repetidamente (mínimo 3 ejecuciones) la misma solicitud bajo una configuración fija de temperatura, midiendo el determinismo y la ausencia de alucinaciones espurias.
 * **Tiempo Total de Ejecución:** Cronometraje del tiempo transcurrido desde que se dispara el análisis hasta que el borrador queda listo para revisión humana.
 * **Tasa de Éxito en Ejecución:** Porcentaje de análisis que culminan sin caídas ni errores críticos en el pipeline.
 

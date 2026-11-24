@@ -15,6 +15,7 @@ def nodo_inconsistencias(state: GraphState) -> Dict[str, Any]:
     texto = state.texto_usuario
     rf = state.requisitos_funcionales
     rnf = state.requisitos_no_funcionales
+
     try:
         llm = LLMClient().with_structured_output(List[Inconsistencia])
         rf_resumen = "\n".join([f"- {r.id}: {r.descripcion}" for r in rf]) or "(ninguno)"

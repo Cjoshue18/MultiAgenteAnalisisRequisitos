@@ -20,5 +20,8 @@ def get_db():
         db.close()
 
 
+# Importar modelos para que se registren en Base.metadata antes de crear tablas
+from src.persistence.repository import AnalisisORM, RequisitoORM, InconsistenciaORM, CasoUsoORM  # noqa: F401
+
 # Crear todas las tablas definidas en los modelos al iniciar la aplicación
 Base.metadata.create_all(engine)

@@ -52,12 +52,22 @@ def ejecutar_analisis(texto_usuario: str) -> Dict[str, Any]:
     estado_inicial = GraphState(texto_usuario=texto_usuario)
     try:
         estado_final = grafo.invoke(estado_inicial)
+        # LangGraph devuelve el estado como instancia de GraphState (Pydantic),
+        # no como dict plano. Acceder por atributos.
+        rf = list(getattr(estado_final, "requisitos_funcionales", []))
+        rnf = list(getattr(estado_final, "requisitos_no_funcionales", []))
+        inc = list(getattr(estado_final, "inconsistencias", []))
+        cus = list(getattr(estado_final, "casos_de_uso", []))
+        errores = list(getattr(estado_final, "errores", []))
         logger.info("Analisis completado: %d RF, %d RNF, %d inconsistencias, %d CUS",
-                    len(estado_final.get("requisitos_funcionales", [])),
-                    len(estado_final.get("requisitos_no_funcionales", [])),
-                    len(estado_final.get("inconsistencias", [])),
-                    len(estado_final.get("casos_de_uso", [])))
-        return estado_final
+                    len(rf), len(rnf), len(inc), len(cus))
+        return {
+            "requisitos_funcionales": rf,
+            "requisitos_no_funcionales": rnf,
+            "inconsistencias": inc,
+            "casos_de_uso": cus,
+            "errores": errores,
+        }
     except Exception as exc:
         logger.error("Error ejecutando grafo: %s", str(exc))
         return {"errores": [f"Error ejecutando grafo: {str(exc)}"]}

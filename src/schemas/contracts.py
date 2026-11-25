@@ -12,6 +12,7 @@ CategoriaISO = Literal[
     "Portabilidad",
 ]
 EstadoAnalisis = Literal["EN_PROCESO", "PENDIENTE_APROBACION", "APROBADO", "FALLIDO"]
+ModalidadModelado = Literal["CUS", "HU", "AMBOS"]
 TextoNoVacio = Annotated[str, Field(min_length=1)]
 
 
@@ -63,6 +64,22 @@ class CasoUso(ContratoBase):
         return pasos
 
 
+class CriterioAceptacion(ContratoBase):
+    dado: str = Field(..., min_length=3, description="Precondición o contexto inicial (DADO)")
+    cuando: str = Field(..., min_length=3, description="Acción o evento disparador (CUANDO)")
+    entonces: str = Field(..., min_length=3, description="Resultado verificable esperado (ENTONCES)")
+
+
+class HistoriaUsuario(ContratoBase):
+    id: str = Field(..., pattern=r"^HU-\d{2,}$", description="Código correlativo HU-01")
+    titulo: str = Field(..., min_length=3, description="Título breve de la historia")
+    como: str = Field(..., min_length=2, description="Rol o actor solicitante (COMO)")
+    quiero: str = Field(..., min_length=5, description="Funcionalidad deseada (QUIERO)")
+    para_que: str = Field(..., min_length=5, description="Valor o beneficio esperado (PARA QUE)")
+    criterios_aceptacion: list[CriterioAceptacion] = Field(..., min_length=1, description="Criterios DADO/CUANDO/ENTONCES")
+    rf_relacionados: list[str] = Field(default_factory=list, description="RF que originan la historia")
+
+
 class SalidaRF(ContratoBase):
     requisitos: list[RequisitoFuncional] = Field(..., description="Requisitos funcionales encontrados")
 
@@ -79,6 +96,10 @@ class SalidaCasosUso(ContratoBase):
     casos_uso: list[CasoUso] = Field(..., description="Casos de uso preliminares")
 
 
+class SalidaHU(ContratoBase):
+    historias_usuario: list[HistoriaUsuario] = Field(..., description="Historias de usuario preliminares")
+
+
 class TrazaEjecucion(ContratoBase):
     nodo: str = Field(..., min_length=1, description="Nombre del nodo ejecutado")
     estado: Literal["COMPLETADO", "REINTENTO", "FALLIDO"] = Field(..., description="Resultado del nodo")
@@ -89,9 +110,14 @@ class TrazaEjecucion(ContratoBase):
 
 class DecisionRevision(ContratoBase):
     accion: Literal["aprobar", "regenerar_cus"] = Field(..., description="Acción explícita del analista en HITL")
+    modalidad_solicitada: ModalidadModelado | None = Field(
+        default=None,
+        description="Si se envía, debe coincidir con la modalidad fija de la corrida",
+    )
     rf_editados: list[RequisitoFuncional] | None = Field(default=None, description="RF editados o confirmados")
     rnf_editados: list[RequisitoNoFuncional] | None = Field(default=None, description="RNF editados o confirmados")
     casos_uso_editados: list[CasoUso] | None = Field(default=None, description="Casos de uso editados")
+    hu_editadas: list[HistoriaUsuario] | None = Field(default=None, description="Historias de usuario editadas")
     respuestas_clarificacion: dict[str, str] = Field(default_factory=dict, description="Respuestas por hallazgo")
     comentarios_analista: str = Field(default="", description="Observaciones finales del analista")
 
@@ -99,12 +125,22 @@ class DecisionRevision(ContratoBase):
 class ReporteConsolidado(ContratoBase):
     analisis_id: str = Field(..., min_length=1, description="Identificador único del análisis")
     estado: Literal["APROBADO"] = Field(..., description="Solo se consolida en estado aprobado")
+    modalidad_modelado: ModalidadModelado = Field(default="CUS", description="Modalidad fija del análisis")
     requisitos_funcionales: list[RequisitoFuncional] = Field(default_factory=list)
     requisitos_no_funcionales: list[RequisitoNoFuncional] = Field(default_factory=list)
     inconsistencias: list[Inconsistencia] = Field(default_factory=list)
     casos_uso: list[CasoUso] = Field(default_factory=list)
+    historias_usuario: list[HistoriaUsuario] = Field(default_factory=list)
     respuestas_clarificacion: dict[str, str] = Field(default_factory=dict)
     comentarios_analista: str = Field(default="")
+
+
+def validar_decision_revision(modalidad_fija: ModalidadModelado, decision: DecisionRevision) -> None:
+    """Impide cambiar la modalidad elegida al inicio durante la revisión o regeneración."""
+    if decision.modalidad_solicitada is not None and decision.modalidad_solicitada != modalidad_fija:
+        raise ValueError(
+            f"La modalidad '{modalidad_fija}' es fija para toda la corrida y no puede cambiarse a '{decision.modalidad_solicitada}'"
+        )
 
 
 def consolidar_reporte(
@@ -117,6 +153,8 @@ def consolidar_reporte(
     casos_uso: list[CasoUso],
     respuestas_clarificacion: dict[str, str],
     comentarios_analista: str,
+    modalidad_modelado: ModalidadModelado = "CUS",
+    historias_usuario: list[HistoriaUsuario] | None = None,
 ) -> ReporteConsolidado:
     """Construye el reporte final inmutable únicamente si existe aprobación humana."""
     if estado != "APROBADO":
@@ -124,10 +162,12 @@ def consolidar_reporte(
     return ReporteConsolidado(
         analisis_id=analisis_id,
         estado="APROBADO",
+        modalidad_modelado=modalidad_modelado,
         requisitos_funcionales=requisitos_funcionales,
         requisitos_no_funcionales=requisitos_no_funcionales,
         inconsistencias=inconsistencias,
         casos_uso=casos_uso,
+        historias_usuario=historias_usuario or [],
         respuestas_clarificacion=respuestas_clarificacion,
         comentarios_analista=comentarios_analista,
     )

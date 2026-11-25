@@ -5,7 +5,7 @@ Principios rectores derivados de [documento_maestro_propuesta.md](../docs/docume
 ---
 
 ## Principio I — Propósito y Rol de Asistencia
-- El sistema asiste a analistas de requisitos extrayendo requisitos funcionales, requisitos no funcionales, inconsistencias y casos de uso a partir de especificaciones textuales.
+- El sistema asiste a analistas de requisitos extrayendo requisitos funcionales, requisitos no funcionales, inconsistencias y modelando **Casos de Uso (CUS)**, **Historias de Usuario (HU)** o **ambos (`AMBOS`)** según la modalidad seleccionada al inicio (fija durante la corrida).
 - No sustituye el juicio del analista humano ni genera código fuente o modelos físicos de base de datos de la aplicación analizada.
 
 ## Principio II — Specification-Driven Development (SDD) Primero
@@ -22,7 +22,7 @@ Principios rectores derivados de [documento_maestro_propuesta.md](../docs/docume
 - **Requisitos Funcionales (RF):** Atómicos (IEEE 29148), con código correlativo único, al menos un actor y cita textual exacta del documento original (RN04, RN05, RNF08).
 - **Requisitos No Funcionales (RNF):** Clasificados bajo las 8 categorías de **ISO/IEC 25010** con métrica cuantificable y umbral verificable (RN06).
 - **Inconsistencias:** Catalogadas por tipo (`ambigüedad`, `contradicción`, `vacío`) y severidad (`Alta`, `Media`, `Baja`), siempre acompañadas de una pregunta de clarificación (RN07).
-- **Casos de Uso (CUS):** Actor principal, precondiciones, flujo principal numerado secuencialmente, flujos alternativos y postcondiciones.
+- **Casos de Uso (CUS) o Historias de Usuario (HU):** Según la selección previa del usuario, el modelado produce `CUS` formales (actor principal, precondiciones, flujo principal numerado secuencialmente, flujos alternativos y postcondiciones) o `HU` ágiles (`COMO/QUIERO/PARA QUE` y criterios de aceptación `DADO/CUANDO/ENTONCES`).
 
 ## Principio V — Validación Humana (Human-in-the-Loop) e Inmutabilidad
 - Todo artefacto generado por agentes es un borrador preliminar hasta recibir aprobación explícita del analista humano (RN08).

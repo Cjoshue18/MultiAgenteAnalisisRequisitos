@@ -16,6 +16,7 @@ Estas reglas aplican a todos los modelos de datos en `src/schemas/`.
    - **RF:** Atributos obligatorios: `id` (e.g. `RF-01`), `nombre`, `descripcion`, `actores` (lista), `referencia_texto`.
    - **RNF:** Atributos obligatorios: `id` (e.g. `RNF-01`), `categoria_iso` (debe ser una de las 8 categorías de ISO 25010), `descripcion`, `metrica_objetiva`, `valor_umbral`.
    - **CUS:** Atributos obligatorios: `id` (e.g. `CUS-01`), `nombre`, `actor_principal`, `precondiciones`, `flujo_principal` (lista numerada), `flujos_alternativos`, `postcondiciones`.
+   - **HU:** Atributos obligatorios: `id` (e.g. `HU-01`), `titulo`, `como`, `quiero`, `para_que`, `criterios_aceptacion` (lista en formato `DADO / CUANDO / ENTONCES`), `rf_relacionados`.
    - **Inconsistencias:** Atributos: `tipo` (ambigüedad, contradicción, vacío), `severidad` (Alta, Media, Baja), `descripcion`, `pregunta_clarificacion`.
 
 ## Ejemplo Correcto

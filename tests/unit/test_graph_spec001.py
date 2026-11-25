@@ -88,7 +88,7 @@ def test_req_01_grafo_rechaza_entrada_invalida_sin_ejecutar_extractores() -> Non
     contadores: dict[str, int] = {}
     grafo = construir_grafo(_cliente_por_esquema(contadores), checkpointer=InMemorySaver())
     res = grafo.invoke(
-        {"analisis_id": "A-01", "texto_usuario": "muy corto"},
+        {"analisis_id": "A-01", "texto_usuario": "muy corto", "modalidad_modelado": "CUS"},
         config={"configurable": {"thread_id": "t-01"}},
     )
     assert res["estado"] == "FALLIDO"
@@ -100,7 +100,7 @@ def test_req_02_grafo_procesa_camino_directo_y_camino_por_lotes() -> None:
     cont_dir: dict[str, int] = {}
     grafo_dir = construir_grafo(_cliente_por_esquema(cont_dir), checkpointer=InMemorySaver())
     res_dir = grafo_dir.invoke(
-        {"analisis_id": "A-02a", "texto_usuario": TEXTO_CORTO},
+        {"analisis_id": "A-02a", "texto_usuario": TEXTO_CORTO, "modalidad_modelado": "CUS"},
         config={"configurable": {"thread_id": "t-02a"}},
     )
     assert res_dir["estrategia_ingesta"] == "directa"
@@ -110,7 +110,7 @@ def test_req_02_grafo_procesa_camino_directo_y_camino_por_lotes() -> None:
     cont_lot: dict[str, int] = {}
     grafo_lot = construir_grafo(_cliente_por_esquema(cont_lot), checkpointer=InMemorySaver())
     res_lot = grafo_lot.invoke(
-        {"analisis_id": "A-02b", "texto_usuario": texto_largo},
+        {"analisis_id": "A-02b", "texto_usuario": texto_largo, "modalidad_modelado": "CUS"},
         config={"configurable": {"thread_id": "t-02b"}},
     )
     assert res_lot["estrategia_ingesta"] == "lotes"
@@ -123,7 +123,7 @@ def test_req_03_grafo_acumula_errores_paralelos_de_rf_y_rnf() -> None:
 
     grafo = construir_grafo(Mock(generar=Mock(side_effect=_fallar_ambos)), checkpointer=InMemorySaver())
     res = grafo.invoke(
-        {"analisis_id": "A-03", "texto_usuario": TEXTO_CORTO},
+        {"analisis_id": "A-03", "texto_usuario": TEXTO_CORTO, "modalidad_modelado": "CUS"},
         config={"configurable": {"thread_id": "t-03"}},
     )
     errores_texto = " | ".join(res["errores"])
@@ -135,7 +135,7 @@ def test_req_05_grafo_pausa_tras_cuatro_subagentes_y_regenera_cus_si_analista_lo
     contadores: dict[str, int] = {}
     grafo = construir_grafo(_cliente_por_esquema(contadores), checkpointer=InMemorySaver())
     cfg = {"configurable": {"thread_id": "t-05"}}
-    pausado = grafo.invoke({"analisis_id": "A-05", "texto_usuario": TEXTO_CORTO}, config=cfg)
+    pausado = grafo.invoke({"analisis_id": "A-05", "texto_usuario": TEXTO_CORTO, "modalidad_modelado": "CUS"}, config=cfg)
     assert pausado["estado"] == "PENDIENTE_APROBACION"
     assert "__interrupt__" in pausado
 
@@ -165,7 +165,7 @@ def test_req_05_grafo_pausa_tras_cuatro_subagentes_y_regenera_cus_si_analista_lo
 def test_req_06_grafo_permite_editar_y_responder_preguntas_en_pendiente_aprobacion() -> None:
     grafo = construir_grafo(_cliente_por_esquema(), checkpointer=InMemorySaver())
     cfg = {"configurable": {"thread_id": "t-06"}}
-    pausado = grafo.invoke({"analisis_id": "A-06", "texto_usuario": TEXTO_CORTO}, config=cfg)
+    pausado = grafo.invoke({"analisis_id": "A-06", "texto_usuario": TEXTO_CORTO, "modalidad_modelado": "CUS"}, config=cfg)
     assert pausado["estado"] == "PENDIENTE_APROBACION"
 
     final = grafo.invoke(
@@ -188,7 +188,7 @@ def test_req_06_grafo_permite_editar_y_responder_preguntas_en_pendiente_aprobaci
 def test_req_07_bloquea_reporte_sin_aprobacion_y_sella_estado_aprobado() -> None:
     grafo = construir_grafo(_cliente_por_esquema(), checkpointer=InMemorySaver())
     cfg = {"configurable": {"thread_id": "t-07"}}
-    pausado = grafo.invoke({"analisis_id": "A-07", "texto_usuario": TEXTO_CORTO}, config=cfg)
+    pausado = grafo.invoke({"analisis_id": "A-07", "texto_usuario": TEXTO_CORTO, "modalidad_modelado": "CUS"}, config=cfg)
     with pytest.raises(ValueError, match="aprobación"):
         consolidar_reporte(
             analisis_id=pausado["analisis_id"],
@@ -227,14 +227,14 @@ def test_req_08_detiene_en_fallido_tras_reintentos_y_reanuda_sin_reejecutar_comp
     grafo = construir_grafo(Mock(generar=Mock(side_effect=_rnf_intermitente)), checkpointer=InMemorySaver())
     cfg = {"configurable": {"thread_id": "t-08"}}
 
-    fallido = grafo.invoke({"analisis_id": "A-08", "texto_usuario": TEXTO_CORTO}, config=cfg)
+    fallido = grafo.invoke({"analisis_id": "A-08", "texto_usuario": TEXTO_CORTO, "modalidad_modelado": "CUS"}, config=cfg)
     assert fallido["estado"] == "FALLIDO"
     assert llamadas["rf"] == 1
     assert llamadas["rnf"] == 3
     assert len(fallido["requisitos_funcionales"]) == 1
 
     fallar_rnf["activo"] = False
-    reanudado = grafo.invoke({"analisis_id": "A-08", "texto_usuario": TEXTO_CORTO}, config=cfg)
+    reanudado = grafo.invoke({"analisis_id": "A-08", "texto_usuario": TEXTO_CORTO, "modalidad_modelado": "CUS"}, config=cfg)
     assert reanudado["estado"] == "PENDIENTE_APROBACION"
     assert llamadas["rf"] == 1
     assert any(t.nodo == "nodo_rf" and t.estado == "COMPLETADO" for t in reanudado["trazas"])

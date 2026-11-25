@@ -3,18 +3,20 @@ from typing import Literal
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
+from pydantic import ValidationError
 from src.agents.functional_agent import nodo_requisitos_funcionales
 from src.agents.inconsistency_agent import nodo_inconsistencias
 from src.agents.nonfunctional_agent import nodo_requisitos_no_funcionales
-from src.agents.use_case_agent import nodo_casos_uso
+from src.agents.use_case_agent import nodo_modelado
 from src.schemas.contracts import (
     DecisionRevision,
     Inconsistencia,
     TrazaEjecucion,
     consolidar_reporte,
+    validar_decision_revision,
 )
 from src.schemas.state import GraphState
-from src.services.ingesta import preparar_ingesta
+from src.services.ingesta import preparar_ingesta, validar_modalidad_modelado
 from src.services.llm_client import ClienteEstructurado
 
 
@@ -50,11 +52,12 @@ def construir_grafo(
     cliente: ClienteEstructurado,
     checkpointer: BaseCheckpointSaver | None = None,
 ):
-    """Construye y compila el StateGraph multiagente con Fork/Join, checkpoints y HITL."""
+    """Construye y compila el StateGraph multiagente con Fork/Join, checkpoints, CUS/HU y HITL."""
 
     def nodo_ingesta(state: GraphState) -> dict[str, object]:
         inicio = _ahora_iso()
         try:
+            modalidad, advertencias = validar_modalidad_modelado(state.get("modalidad_modelado"))
             res = preparar_ingesta(
                 texto=state.get("texto_usuario"),
                 ruta_archivo=state.get("ruta_archivo"),
@@ -62,6 +65,8 @@ def construir_grafo(
             )
             return {
                 "estado": "EN_PROCESO",
+                "modalidad_modelado": modalidad,
+                "advertencias": advertencias,
                 "texto_usuario": res.texto_limpio,
                 "tamano_bytes": res.tamano_bytes,
                 "estrategia_ingesta": res.estrategia,
@@ -72,7 +77,7 @@ def construir_grafo(
                         estado="COMPLETADO",
                         inicio_iso=inicio,
                         fin_iso=_ahora_iso(),
-                        detalle=f"{res.estrategia}:{len(res.fragmentos)}",
+                        detalle=f"{modalidad}:{res.estrategia}:{len(res.fragmentos)}",
                     )
                 ],
             }
@@ -109,8 +114,21 @@ def construir_grafo(
     def nodo_inc(state: GraphState) -> dict[str, object]:
         return nodo_inconsistencias(state, cliente)
 
-    def nodo_cus(state: GraphState) -> dict[str, object]:
-        return nodo_casos_uso(state, cliente)
+    def nodo_modelado_grafo(state: GraphState) -> dict[str, object]:
+        inicio = _ahora_iso()
+        res = nodo_modelado(state, cliente)
+        estado_traza = "FALLIDO" if "errores" in res else "COMPLETADO"
+        trazas = list(res.get("trazas", []))  # type: ignore[arg-type]
+        trazas.append(
+            TrazaEjecucion(
+                nodo="nodo_modelado",
+                estado=estado_traza,
+                inicio_iso=inicio,
+                fin_iso=_ahora_iso(),
+                detalle=str(state.get("modalidad_modelado")),
+            )
+        )
+        return {**res, "trazas": trazas}
 
     def nodo_marcar_fallido(_state: GraphState) -> dict[str, object]:
         return {"estado": "FALLIDO"}
@@ -120,22 +138,37 @@ def construir_grafo(
 
     def nodo_revision_humana(
         state: GraphState,
-    ) -> Command[Literal["nodo_casos_uso", "nodo_consolidador"]]:
+    ) -> Command[Literal["nodo_modelado", "nodo_consolidador", "nodo_preparar_revision"]]:
+        modalidad_fija = state.get("modalidad_modelado", "CUS")
         decision_raw = interrupt(
             {
                 "estado": "PENDIENTE_APROBACION",
+                "modalidad_modelado": modalidad_fija,
+                "advertencias": state.get("advertencias", []),
                 "requisitos_funcionales": state.get("requisitos_funcionales", []),
                 "requisitos_no_funcionales": state.get("requisitos_no_funcionales", []),
                 "inconsistencias": state.get("inconsistencias", []),
                 "casos_uso": state.get("casos_uso", []),
+                "historias_usuario": state.get("historias_usuario", []),
             }
         )
-        decision = DecisionRevision.model_validate(decision_raw)
+        try:
+            decision = DecisionRevision.model_validate(decision_raw)
+            validar_decision_revision(modalidad_fija, decision)
+        except (ValueError, ValidationError) as exc:
+            return Command(
+                update={"errores": [str(exc)], "estado": "PENDIENTE_APROBACION"},
+                goto="nodo_preparar_revision",
+            )
+
         rf_final = decision.rf_editados if decision.rf_editados is not None else state.get("requisitos_funcionales", [])
         rnf_final = (
             decision.rnf_editados if decision.rnf_editados is not None else state.get("requisitos_no_funcionales", [])
         )
         cus_final = decision.casos_uso_editados if decision.casos_uso_editados is not None else state.get("casos_uso", [])
+        hu_final = (
+            decision.hu_editadas if decision.hu_editadas is not None else state.get("historias_usuario", [])
+        )
         inc_act = _aplicar_respuestas_inconsistencias(
             state.get("inconsistencias", []),
             decision.respuestas_clarificacion,
@@ -150,8 +183,9 @@ def construir_grafo(
         }
         if decision.accion == "regenerar_cus":
             updates["estado"] = "EN_PROCESO"
-            return Command(update=updates, goto="nodo_casos_uso")
+            return Command(update=updates, goto="nodo_modelado")
         updates["casos_uso"] = cus_final
+        updates["historias_usuario"] = hu_final
         return Command(update=updates, goto="nodo_consolidador")
 
     def nodo_consolidador(state: GraphState) -> dict[str, object]:
@@ -159,10 +193,12 @@ def construir_grafo(
         reporte = consolidar_reporte(
             analisis_id=state.get("analisis_id") or "ANA-000",
             estado="APROBADO",
+            modalidad_modelado=state.get("modalidad_modelado", "CUS"),
             requisitos_funcionales=state.get("requisitos_funcionales", []),
             requisitos_no_funcionales=state.get("requisitos_no_funcionales", []),
             inconsistencias=state.get("inconsistencias", []),
             casos_uso=state.get("casos_uso", []),
+            historias_usuario=state.get("historias_usuario", []),
             respuestas_clarificacion=state.get("respuestas_clarificacion", {}),
             comentarios_analista=state.get("comentarios_analista", ""),
         )
@@ -200,7 +236,7 @@ def construir_grafo(
     grafo.add_node("nodo_rnf", nodo_rnf)
     grafo.add_node("nodo_sincronizar", nodo_sincronizar)
     grafo.add_node("nodo_inconsistencias", nodo_inc)
-    grafo.add_node("nodo_casos_uso", nodo_cus)
+    grafo.add_node("nodo_modelado", nodo_modelado_grafo)
     grafo.add_node("nodo_marcar_fallido", nodo_marcar_fallido)
     grafo.add_node("nodo_preparar_revision", nodo_preparar_revision)
     grafo.add_node("nodo_revision_humana", nodo_revision_humana)
@@ -213,12 +249,12 @@ def construir_grafo(
     grafo.add_conditional_edges("nodo_sincronizar", _ruta_sincronizar, ["nodo_inconsistencias", END])
     grafo.add_conditional_edges(
         "nodo_inconsistencias",
-        _ruta_tras_nodo("nodo_inconsistencias", "nodo_casos_uso"),
-        ["nodo_casos_uso", "nodo_marcar_fallido"],
+        _ruta_tras_nodo("nodo_inconsistencias", "nodo_modelado"),
+        ["nodo_modelado", "nodo_marcar_fallido"],
     )
     grafo.add_conditional_edges(
-        "nodo_casos_uso",
-        _ruta_tras_nodo("nodo_casos_uso", "nodo_preparar_revision"),
+        "nodo_modelado",
+        _ruta_tras_nodo("nodo_modelado", "nodo_preparar_revision"),
         ["nodo_preparar_revision", "nodo_marcar_fallido"],
     )
     grafo.add_edge("nodo_marcar_fallido", END)

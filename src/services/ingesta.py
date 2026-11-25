@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Literal, Protocol, cast
 from pypdf import PdfReader
 from src.schemas.contracts import ModalidadModelado
+from src.services.seguridad import validar_seguridad_entrada
 
 MIN_CARACTERES = 20
 MAX_BYTES = 10 * 1024 * 1024
@@ -105,6 +106,7 @@ def preparar_ingesta(
     texto_limpio = " ".join(contenido.split())
     if len(texto_limpio) < MIN_CARACTERES:
         raise ValueError("La descripción debe contener al menos 20 caracteres significativos")
+    validar_seguridad_entrada(texto_limpio)
 
     palabras = texto_limpio.split()
     total_palabras = len(palabras)

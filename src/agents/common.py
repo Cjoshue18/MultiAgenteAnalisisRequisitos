@@ -5,10 +5,12 @@ from typing import Any, TypeVar
 from pydantic import BaseModel
 from src.schemas.contracts import TrazaEjecucion
 from src.schemas.state import GraphState
-from src.services.llm_client import ClienteEstructurado
+from src.services.llm_client import ClienteEstructurado, invocar_cliente_estructurado
 
 logger = logging.getLogger(__name__)
 MAX_REINTENTOS = 2
+TIMEOUT_DIRECTA_S = 15.0
+TIMEOUT_LOTES_S = 30.0
 T = TypeVar("T", bound=BaseModel)
 
 
@@ -34,13 +36,14 @@ def _ejecutar_con_reintentos(
     instrucciones: str,
     nodo: str,
     max_reintentos: int = MAX_REINTENTOS,
+    timeout_s: float | None = TIMEOUT_DIRECTA_S,
 ) -> tuple[T | None, list[TrazaEjecucion], Exception | None]:
     trazas: list[TrazaEjecucion] = []
     ultimo_error: Exception | None = None
     for intento in range(max_reintentos + 1):
         inicio = _ahora_iso()
         try:
-            resultado = cliente.generar(esquema, instrucciones)
+            resultado = invocar_cliente_estructurado(cliente, esquema, instrucciones, timeout_s=timeout_s)
             salida = esquema.model_validate(resultado)
             trazas.append(
                 TrazaEjecucion(nodo=nodo, estado="COMPLETADO", inicio_iso=inicio, fin_iso=_ahora_iso(), detalle="OK")
@@ -69,9 +72,16 @@ def ejecutar_agente(
     clave: str,
     atributo: str,
     nodo: str | None = None,
+    timeout_s: float | None = TIMEOUT_DIRECTA_S,
 ) -> dict[str, object]:
     nombre_nodo = nodo or clave
-    salida, trazas, exc = _ejecutar_con_reintentos(cliente, esquema, instrucciones, nombre_nodo)
+    salida, trazas, exc = _ejecutar_con_reintentos(
+        cliente,
+        esquema,
+        instrucciones,
+        nombre_nodo,
+        timeout_s=timeout_s,
+    )
     if exc is not None or salida is None:
         return {"errores": [f"{clave}: {type(exc).__name__}: {exc}"], "trazas": trazas}
     return {clave: getattr(salida, atributo), "trazas": trazas}
@@ -95,14 +105,31 @@ def extraer_por_lotes(
         return {"errores": [str(exc)]}
 
     fragmentos = state.get("fragmentos") or [texto]
+    es_lotes = len(fragmentos) > 1 or state.get("estrategia_ingesta") == "lotes"
+    timeout_s = TIMEOUT_LOTES_S if es_lotes else TIMEOUT_DIRECTA_S
+
     if len(fragmentos) == 1:
-        return ejecutar_agente(cliente, esquema, constructor_instrucciones(fragmentos[0]), clave, atributo, nodo=nodo)
+        return ejecutar_agente(
+            cliente,
+            esquema,
+            constructor_instrucciones(fragmentos[0]),
+            clave,
+            atributo,
+            nodo=nodo,
+            timeout_s=timeout_s,
+        )
 
     acumulados: list[Any] = []
     vistas: set[tuple[str, ...]] = set()
     trazas_totales: list[TrazaEjecucion] = []
     for lote in fragmentos:
-        salida, trazas, exc = _ejecutar_con_reintentos(cliente, esquema, constructor_instrucciones(lote), nodo)
+        salida, trazas, exc = _ejecutar_con_reintentos(
+            cliente,
+            esquema,
+            constructor_instrucciones(lote),
+            nodo,
+            timeout_s=timeout_s,
+        )
         trazas_totales.extend(trazas)
         if exc is not None or salida is None:
             return {"errores": [f"{clave}: {type(exc).__name__}: {exc}"], "trazas": trazas_totales}

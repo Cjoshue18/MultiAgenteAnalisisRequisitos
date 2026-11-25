@@ -10,7 +10,7 @@ Sistema multiagente inteligente que recibe especificaciones textuales o historia
 - **Requisitos Funcionales (RF):** Atómicos, con actores y citas del texto original.
 - **Requisitos No Funcionales (RNF):** Atributos de calidad clasificados bajo **ISO/IEC 25010** con métricas objetivas cuantificables.
 - **Inconsistencias y Ambigüedades:** Detección de vacíos, contradicciones y formulación de preguntas de clarificación.
-- **Casos de Uso (CUS):** Especificación formal derivada de los RF aprobados (actores, precondiciones, flujo principal, alternativos y postcondiciones).
+- **Modelado de Requisitos (CUS, HU o AMBOS):** Según lo elegido por el usuario antes de enviar (fijo para esa corrida), genera **Casos de Uso (`CUS-xx`)** formales, **Historias de Usuario (`HU-xx`)** ágiles (`COMO/QUIERO/PARA QUE` + criterios `DADO/CUANDO/ENTONCES`), o ambos a partir de los RF.
 
 ---
 
@@ -74,8 +74,8 @@ El flujo en el `StateGraph` de LangGraph sigue esta secuencia obligatoria:
                                  ▼
                      ┌─────────────────────────┐
                      │       Subagente 4       │
-                     │   Casos de Uso (CUS-xx) │
-                     │  (Basado en RF limpios) │
+                     │   Modelador CUS o HU    │
+                     │ (Según formato elegido) │
                      └───────────┬─────────────┘
                                  │
                                  ▼
@@ -90,7 +90,7 @@ El flujo en el `StateGraph` de LangGraph sigue esta secuencia obligatoria:
 2. **Subagente 1 (RF):** Extrae requerimientos funcionales atómicos (`RF-xx`), actores y reglas.
 3. **Subagente 2 (RNF):** Extrae y categoriza bajo ISO/IEC 25010 asignando métricas objetivas (`RNF-xx`).
 4. **Subagente 3 (Inconsistencias):** Cruza entrada vs RF y RNF; detecta contradicciones, ambigüedades y genera preguntas al usuario.
-5. **Subagente 4 (Casos de Uso):** Genera casos de uso (`CUS-xx`) estructurados con flujo principal y alternativo a partir de los RF ya depurados.
+5. **Subagente 4 (Modelador CUS / HU):** Genera Casos de Uso (`CUS-xx`) estructurados o Historias de Usuario (`HU-xx`) ágiles según el formato seleccionado por el usuario antes de enviar la solicitud.
 
 ---
 

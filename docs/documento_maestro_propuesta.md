@@ -16,7 +16,7 @@ El análisis de requisitos es una de las etapas más importantes dentro del desa
 
 Sin embargo, este proceso presenta dificultades cuando la información proporcionada por los interesados es extensa, ambigua, incompleta o contradictoria. Los errores cometidos en esta fase inicial se propagan a lo largo de todo el ciclo de vida del proyecto, elevando significativamente los costos y tiempos de corrección en etapas de diseño, codificación y pruebas.
 
-Por este motivo, nuestro proyecto propone desarrollar un sistema de software basado en una arquitectura multiagente de inteligencia artificial que permita automatizar y asistir en el análisis de requisitos. El sistema contará con un agente principal encargado de coordinar las actividades y cuatro subagentes especializados en identificar requisitos funcionales, requisitos no funcionales bajo normas internacionales, inconsistencias semánticas y casos de uso detallados.
+Por este motivo, nuestro proyecto propone desarrollar un sistema de software basado en una arquitectura multiagente de inteligencia artificial que permita automatizar y asistir en el análisis de requisitos. El sistema contará con un agente principal encargado de coordinar las actividades y cuatro subagentes especializados en identificar requisitos funcionales, requisitos no funcionales bajo normas internacionales, inconsistencias semánticas y modelado de casos de uso o historias de usuario ágiles según la metodología elegida por el analista.
 
 La finalidad es proporcionar una herramienta de apoyo para estudiantes, analistas de sistemas y equipos de desarrollo de software, facilitando la elaboración de especificaciones de requisitos organizadas, coherentes y verificables.
 
@@ -48,7 +48,7 @@ Diseñar e implementar un sistema de software basado en una arquitectura multiag
 2. Desarrollar un subagente especializado en la extracción de requisitos funcionales atómicos, identificando actores y manteniendo la cita textual original como sustento de trazabilidad.
 3. Desarrollar un subagente especializado en la clasificación de requisitos no funcionales bajo la norma internacional ISO/IEC 25010, formulando métricas cuantitativas y objetivas.
 4. Implementar un subagente detector de inconsistencias que analice contradicciones, ambigüedades léxicas y vacíos de información, asignando niveles de severidad y formulando preguntas de clarificación.
-5. Desarrollar un subagente modelador de casos de uso que derive especificaciones formales con actores, precondiciones, flujo principal numerado, flujos alternativos y postcondiciones.
+5. Desarrollar un subagente modelador configurable que derive Casos de Uso formales (CUS) o Historias de Usuario ágiles (HU) con criterios de aceptación verificables, según la modalidad seleccionada por el analista antes de enviar la solicitud.
 6. Establecer un mecanismo de orquestación híbrido basado en LangGraph que soporte ejecución concurrente en paralelo y control de puntos de recuperación por checkpoints.
 7. Implementar una capa de persistencia desacoplada para almacenar los análisis, requisitos, inconsistencias y auditoría de ejecución en una base de datos local SQLite.
 8. Incorporar un mecanismo de interacción y validación humana (*Human-in-the-Loop*) que permita al analista revisar, editar, comentar y aprobar formalmente las propuestas antes de emitir el reporte final.
@@ -93,7 +93,7 @@ El sistema generará:
 * Validar y sanitizar la entrada descartando textos vacíos o intentos de inyección de instrucciones.
 * Extraer y listar requisitos funcionales con sus respectivos actores y citas textuales de origen.
 * Clasificar requisitos no funcionales organizados según las características de la norma ISO/IEC 25010 con métricas objetivas.
-* Generar casos de uso con especificación formal completa.
+* Permitir al analista seleccionar antes de enviar la solicitud si el modelado se generará como **Casos de Uso (CUS)**, **Historias de Usuario ágiles (HU)** o **ambos (`AMBOS`)** (modalidad fija por corrida, con aviso de mayor demora si elige ambos).
 * Identificar y catalogar inconsistencias por severidad (Alta, Media, Baja) generando preguntas de clarificación.
 * Ofrecer una interfaz de revisión donde el analista edita propuestas, responde preguntas, ingresa comentarios y aprueba el reporte.
 * Persistir los análisis, estados y trazabilidad en una base de datos local SQLite.
@@ -117,7 +117,7 @@ flowchart TD
     Orquestador -->|"Ejecución Concurrente"| SubRNF["SUBAGENTE 2:\nRequisitos No Funcionales (ISO/IEC 25010)"]
     SubRF -->|"Sincronización"| SubInc["SUBAGENTE 3:\nDetector de Inconsistencias"]
     SubRNF -->|"Sincronización"| SubInc
-    SubInc --> SubCUS["SUBAGENTE 4:\nModelador de Casos de Uso"]
+    SubInc --> SubCUS["SUBAGENTE 4:\nModelador (CUS o HU)"]
     SubCUS --> HITL["REVISIÓN Y APROBACIÓN HUMANA\n(Human-in-the-Loop)"]
     HITL --> Reporte["REPORTE CONSOLIDADO\nY PERSISTENCIA (SQLite)"]
 ```
@@ -134,8 +134,10 @@ Se encarga de identificar restricciones técnicas y atributos de calidad. Clasif
 ### 6.4. Subagente 3: Detector de Inconsistencias y Ambigüedades
 Analiza de manera cruzada la entrada del usuario frente a las extracciones de requisitos funcionales y no funcionales. Su función es descubrir contradicciones lógicas entre requisitos, ambigüedades léxicas y vacíos de información. Para cada hallazgo, asigna una severidad (Alta, Media o Baja) y redacta una pregunta de clarificación orientada a resolver la incertidumbre antes de modelar los casos de uso.
 
-### 6.5. Subagente 4: Modelador de Casos de Uso (CUS)
-Toma los requisitos funcionales depurados y modela los casos de uso del sistema. Genera especificaciones formales que contienen: identificador único, nombre del caso de uso, actor detonador, precondiciones requeridas, secuencia numerada del flujo principal de eventos, flujos alternativos ante errores y postcondiciones del sistema.
+### 6.5. Subagente 4: Modelador de Casos de Uso (CUS) o Historias de Usuario (HU)
+Toma los requisitos funcionales extraídos y genera el modelado en el formato seleccionado previamente por el usuario:
+* **Modalidad Tradicional (`CUS`):** especificaciones formales con identificador único, nombre, actor detonador, precondiciones, flujo principal numerado, flujos alternativos y postcondiciones.
+* **Modalidad Ágil (`HU`):** historias de usuario con identificador único (`HU-xx`), título, narrativa ágil (`COMO / QUIERO / PARA QUE`), criterios de aceptación verificables (`DADO / CUANDO / ENTONCES`) y requisitos funcionales vinculados.
 
 ---
 
@@ -148,7 +150,7 @@ El sistema implementa una **orquestación híbrida** utilizando la librería **L
 2. **Fase de Extracción Concurrente (Bifurcación / Fork):** El grafo dispara simultáneamente la ejecución del Subagente 1 (Requisitos Funcionales) y del Subagente 2 (Requisitos No Funcionales). Ambos procesan el documento en paralelo, reduciendo el tiempo de espera casi a la mitad.
 3. **Fase de Sincronización (Join):** El grafo espera a que ambos subagentes de extracción completen sus resultados antes de avanzar.
 4. **Fase de Análisis Crítico y Detección de Inconsistencias:** Con los requisitos funcionales y no funcionales consolidados en el estado, se ejecuta el Subagente 3 para detectar inconsistencias semánticas, contradicciones, ambigüedades y formular preguntas de clarificación, asegurando una base depurada.
-5. **Fase de Modelado de Casos de Uso:** Con los requisitos funcionales ya contrastados y validados, se ejecuta el Subagente 4 para estructurar formalmente los casos de uso sin arrastrar inconsistencias.
+5. **Fase de Modelado (CUS o HU):** Con los requisitos funcionales contrastados, se ejecuta el Subagente 4 para generar Casos de Uso formales o Historias de Usuario ágiles según el formato seleccionado por el usuario antes de iniciar el análisis.
 6. **Fase de Pausa para Validación Humana (*Human-in-the-Loop*):** El grafo entra en estado de espera, permitiendo que el analista revise las tablas en pantalla, edite campos, responda preguntas y agregue comentarios.
 7. **Fase de Cierre y Persistencia:** Al presionar "Aprobar", el agente principal sella el reporte consolidado y realiza la persistencia final.
 
@@ -208,14 +210,14 @@ El módulo orquestador expone una interfaz simplificada hacia la API REST (`inic
 
 | Código | Requisito Funcional |
 | :--- | :--- |
-| **RF01** | El sistema debe permitir el ingreso de solicitudes de requisitos mediante texto directo o carga de archivos (.txt, .md, .pdf). |
+| **RF01** | El sistema debe permitir el ingreso de solicitudes mediante texto directo o archivos (.txt, .md, .pdf), exigiendo seleccionar la modalidad de modelado (`CUS` o `HU`) antes de enviar. |
 | **RF02** | El sistema debe validar que la entrada tenga contenido suficiente antes de iniciar el análisis. |
 | **RF03** | El agente principal debe coordinar la ejecución concurrente de los subagentes mediante un grafo de LangGraph. |
 | **RF04** | El Subagente 1 debe extraer requisitos funcionales atómicos bajo IEEE 29148, asociando actores y citas textuales del documento original. |
 | **RF05** | El Subagente 2 debe clasificar requisitos no funcionales bajo la norma ISO/IEC 25010, asignando métricas objetivas cuantificables. |
 | **RF06** | El Subagente 3 debe detectar inconsistencias, contradicciones y ambigüedades semánticas, catalogándolas por nivel de severidad. |
 | **RF07** | El Subagente 3 debe redactar preguntas de clarificación dirigidas a resolver los vacíos de información detectados. |
-| **RF08** | El Subagente 4 debe modelar casos de uso con identificador, actor, precondiciones, flujo principal numerado, alternativos y postcondiciones. |
+| **RF08** | El Subagente 4 debe modelar Casos de Uso (`CUS`) con precondiciones y flujos, o Historias de Usuario ágiles (`HU`) con narrativa `COMO/QUIERO/PARA QUE` y criterios `DADO/CUANDO/ENTONCES`, según el formato elegido. |
 | **RF09** | El agente principal debe consolidar e integrar las salidas estructuradas de los subagentes en una especificación unificada preliminar. |
 | **RF10** | El sistema debe permitir al analista humano revisar, editar requisitos, responder preguntas de clarificación e ingresar comentarios. |
 | **RF11** | El sistema debe requerir la aprobación explícita del analista humano para formalizar el reporte final de requisitos. |
@@ -249,7 +251,7 @@ Actor principal: Analista de Requisitos o Usuario del sistema.
 
 | Código | Caso de Uso | Descripción |
 | :--- | :--- | :--- |
-| **CUS01** | Ingresar solicitud de análisis | El usuario ingresa una descripción textual o adjunta un archivo para iniciar el proceso. |
+| **CUS01** | Ingresar solicitud de análisis | El usuario ingresa una descripción textual o adjunta un archivo y selecciona el formato de modelado (`CUS` o `HU`) para iniciar el proceso. |
 | **CUS02** | Procesar análisis multiagente | El sistema ejecuta el grafo de LangGraph coordinando los cuatro subagentes especializados. |
 | **CUS03** | Revisar propuestas e inconsistencias | El analista examina las tablas de requisitos, edita campos y revisa las preguntas de clarificación. |
 | **CUS04** | Responder clarificaciones y comentar | El analista responde a las dudas formuladas por el sistema e ingresa observaciones de negocio. |
@@ -284,8 +286,10 @@ Para garantizar la interoperabilidad y el bajo acoplamiento, la comunicación se
   Retorna una lista donde cada elemento contiene: `codigo`, `nombre`, `descripcion`, `actores` y `referencia_texto_original`.
 * **Salida de Requisitos No Funcionales:**
   Retorna una lista donde cada elemento contiene: `codigo`, `categoria_iso`, `descripcion`, `metrica_objetiva` y `valor_umbral`.
-* **Salida de Casos de Uso:**
+* **Salida de Casos de Uso (`CUS`):**
   Retorna una lista estructurada con: `codigo`, `nombre`, `actor_principal`, `precondiciones`, `flujo_principal` (lista ordenada de pasos), `flujos_alternativos` y `postcondiciones`.
+* **Salida de Historias de Usuario (`HU`):**
+  Retorna una lista estructurada con: `codigo`, `titulo`, `como`, `quiero`, `para_que`, `criterios_aceptacion` (formato `DADO / CUANDO / ENTONCES`) y `rf_relacionados`.
 * **Salida de Inconsistencias:**
   Retorna una lista de hallazgos con: `tipo` (ambigüedad, contradicción o vacío), `severidad` (Alta, Media o Baja), `elementos_afectados`, `descripcion_problema` y `pregunta_clarificacion`.
 
@@ -306,7 +310,7 @@ El modelo de dominio representa los conceptos fundamentales del negocio y sus re
 * **Analisis:** Entidad central que registra una corrida del pipeline multiagente, su fecha, estado y tiempo de respuesta.
 * **TareaAgente / TrazaEjecucion:** Registra cada ejecución individual de un subagente dentro del análisis, almacenando el identificador del nodo, marcas de tiempo de inicio y fin, latencia en segundos, tokens estimados y estado de salida (Completado / Reintento / Fallido), garantizando la observabilidad exigida por RNF05.
 * **Requisito:** Clase base de especificación, especializada en **RequisitoFuncional** (con actores y citas de origen) y **RequisitoNoFuncional** (con categoría ISO y métricas).
-* **CasoUso:** Modelado operacional asociado directamente a los requisitos funcionales identificados.
+* **CasoUso / HistoriaUsuario:** Modelado operacional o ágil asociado directamente a los requisitos funcionales identificados según la modalidad elegida.
 * **Inconsistencia:** Hallazgo semántico que señala un defecto o vacío, vinculado a los requisitos afectados.
 * **PreguntaClarificacion:** Interrogante generada para resolver una inconsistencia con la respuesta aportada por el analista.
 * **ReporteConsolidado:** Documento final aprobado, inmutable y disponible para exportación en múltiples formatos.
@@ -357,7 +361,7 @@ Se propone un plan de pruebas estructurado para evaluar tanto los componentes ai
 | **CP03** | Extracción atómica de requisitos funcionales | Unitaria | Se obtienen requisitos `RF-xx` con actores y citas textuales coherentes con la entrada. |
 | **CP04** | Clasificación de requisitos no funcionales | Unitaria | Se obtienen requisitos `RNF-xx` clasificados en ISO 25010 con métricas objetivas. |
 | **CP05** | Detección de contradicciones semánticas | Integración | El Subagente 3 identifica las contradicciones sembradas en el texto de prueba. |
-| **CP06** | Generación de casos de uso formales | Unitaria | Se generan casos de uso con precondiciones, pasos numerados y flujos alternativos. |
+| **CP06** | Generación formal de CUS o HU | Unitaria | Se generan Casos de Uso (`CUS`) con flujos o Historias de Usuario (`HU`) con criterios `DADO/CUANDO/ENTONCES` según lo seleccionado. |
 | **CP07** | Simulación de fallo en el servicio de IA (Mock) | Resiliencia | El sistema ejecuta la política de manejo de error y preserva el estado en la base de datos. |
 | **CP08** | Ejecución del flujo concurrente completo | Integración | Los subagentes en paralelo completan sus tareas y el orquestador presenta el borrador. |
 | **CP09** | Modificación, comentarios y aprobación del analista | Usabilidad / R7 | El sistema registra las correcciones humanas y cambia el estado a aprobado. |
@@ -382,7 +386,7 @@ Al concluir el proyecto, el sistema entregará un reporte formal de Especificaci
 * Resumen de la solicitud y contexto del sistema evaluado.
 * Matriz de Requisitos Funcionales con trazabilidad directa a las frases de origen.
 * Matriz de Requisitos No Funcionales clasificados bajo la norma ISO/IEC 25010.
-* Catálogo de Casos de Uso con detalle de flujos principales y alternativos.
+* Catálogo de Casos de Uso (`CUS`) o Historias de Usuario ágiles (`HU`) según la modalidad seleccionada.
 * Reporte de Inconsistencias y Ambigüedades con preguntas de clarificación y severidad asignada.
 * Registro de observaciones, comentarios y constancia de aprobación del analista humano.
 * Archivo descargable en formato Markdown y JSON, con opción de exportación a PDF y Word.

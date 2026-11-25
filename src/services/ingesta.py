@@ -1,13 +1,29 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Literal, Protocol, cast
 from pypdf import PdfReader
+from src.schemas.contracts import ModalidadModelado
 
 MIN_CARACTERES = 20
 MAX_BYTES = 10 * 1024 * 1024
 UMBRAL_PALABRAS_LOTES = 1000
 MAX_PALABRAS = 10_000
 EXTENSIONES_PERMITIDAS = {".txt", ".md", ".pdf"}
+MODALIDADES_PERMITIDAS = {"CUS", "HU", "AMBOS"}
+
+
+def validar_modalidad_modelado(modalidad: str | None) -> tuple[ModalidadModelado, list[str]]:
+    """Valida la modalidad elegida antes del envío y emite las advertencias obligatorias."""
+    if modalidad not in MODALIDADES_PERMITIDAS:
+        raise ValueError("Debe seleccionar una modalidad válida antes de enviar: CUS, HU o AMBOS")
+    advertencias = [
+        "La modalidad seleccionada quedará fija para toda la corrida y no podrá cambiarse en revisión ni al regenerar."
+    ]
+    if modalidad == "AMBOS":
+        advertencias.append(
+            "Al seleccionar AMBOS el proceso demorará más al generar Casos de Uso e Historias de Usuario."
+        )
+    return cast(ModalidadModelado, modalidad), advertencias
 
 
 @dataclass(frozen=True)

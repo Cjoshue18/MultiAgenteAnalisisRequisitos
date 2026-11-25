@@ -23,7 +23,7 @@ class LLMClient:
         from google import genai  # type: ignore
 
         self._client = genai.Client(api_key=api_key)
-        self._model = "gemini-1.0-pro"
+        self._model = "gemini-3.8-flash"
 
     def _resolver_esquema(self, modelo_pydantic: Type[T]) -> Type[BaseModel]:
         """Si el tipo es una lista, crea un modelo contenedor para structured output."""

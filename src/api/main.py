@@ -1,5 +1,15 @@
+import logging
 from fastapi import FastAPI
 from src.api.routes import router
+
+# Silenciar logs ruidosos de uvicorn.access para ciertos endpoints
+class _NoiseFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return "/v1/models" not in msg
+
+
+logging.getLogger("uvicorn.access").addFilter(_NoiseFilter())
 
 app = FastAPI(
     title="Sistema Multiagente de Analisis de Requisitos",

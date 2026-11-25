@@ -14,22 +14,36 @@ os.chdir(BASE)
 # Ruta al interprete de Python del entorno virtual
 venv_python = os.path.join(BASE, ".venv", "Scripts", "python.exe")
 
+print("\n" + "=" * 50)
+print("  Sistema Multiagente de Analisis de Requisitos")
+print("  Grupo 6  |  Arquitectura y Evolucion de Software (2026-2)")
+print("=" * 50 + "\n")
+
 # Crear entorno virtual si no existe
 if not os.path.exists(venv_python):
     print("[i] Creando entorno virtual (.venv)...")
     subprocess.run([sys.executable, "-m", "venv", ".venv"], check=True)
 
-# Instalar dependencias si es necesario
-print("[i] Instalando/verificando dependencias...")
-subprocess.run([venv_python, "-m", "pip", "install", "-r", "requirements.txt"], check=True)
+# Instalar dependencias (modo silencioso: solo muestra errores)
+print("[i] Verificando dependencias...")
+result = subprocess.run(
+    [venv_python, "-m", "pip", "install", "-q", "-r", "requirements.txt"],
+    capture_output=True,
+    text=True,
+)
+if result.returncode != 0:
+    print("[!] Error instalando dependencias:")
+    print(result.stderr[-2000:])
+    sys.exit(1)
+else:
+    print("[i] Dependencias listas")
 
 print("\n" + "=" * 50)
-print("  Sistema Multiagente de Analisis de Requisitos")
-print("  Grupo 6  |  Arquitectura y Evolucion de Software (2026-2)")
-print("=" * 50)
+print("  Lanzando servicios...")
+print("=" * 50 + "\n")
 
 # Lanzar backend (FastAPI + Uvicorn)
-print("\n[1/2] Iniciando API Backend (FastAPI)...")
+print("[1/2] Iniciando API Backend (FastAPI)...")
 subprocess.Popen(
     [venv_python, "-m", "uvicorn", "src.api.main:app", "--reload"],
     cwd=BASE,

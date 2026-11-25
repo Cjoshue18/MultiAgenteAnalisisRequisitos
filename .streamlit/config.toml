@@ -1,0 +1,33 @@
+[theme]
+base = "light"
+primaryColor = "#0f62fe"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+textColor = "#0a142f"
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+
+[theme.sidebar]
+backgroundColor = "#f8f9fa"
+secondaryBackgroundColor = "#e9ecef"
+textColor = "#0a142f"
+borderColor = "#dee2e6"
+primaryColor = "#0f62fe"
+linkColor = "#0f62fe"
+
+[theme.dark]
+primaryColor = "#4dabff"
+backgroundColor = "#0a142f"
+secondaryBackgroundColor = "#1a1f2e"
+textColor = "#f8fafc"
+borderColor = "#334155"
+
+[theme.dark.sidebar]
+backgroundColor = "#0f172a"
+secondaryBackgroundColor = "#1e293b"
+textColor = "#f8fafc"
+borderColor = "#334155"
+primaryColor = "#4dabff"
+linkColor = "#818cf8"
+
+[server]
+maxUploadSize = 200

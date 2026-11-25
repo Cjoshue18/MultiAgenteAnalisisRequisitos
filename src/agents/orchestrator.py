@@ -15,7 +15,7 @@ def nodo_orquestador(state: GraphState) -> Dict[str, Any]:
     if len(texto) < 20:
         return {"errores": ["La solicitud debe contener al menos 20 caracteres significativos."]}
 
-    analisis_id = state.analisis_id or f"ANAL-{abs(hash(texto)) % 100000:05d}"
+    analisis_id = state.analisis_id or f"ANL-{abs(hash(texto)) % 100000:05d}"
     logger.info("Orquestador inicio analisis id=%s", analisis_id)
 
     return {

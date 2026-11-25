@@ -1,3 +1,5 @@
+import uuid
+import json
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
@@ -32,7 +34,7 @@ def iniciar_analisis(entrada: AnalisisEntrada, db: Session = Depends(get_db)) ->
 
     repo = AnalisisRepository(db)
     analisis = repo.crear_analisis(
-        analisis_id=f"ANAL-{abs(hash(entrada.texto)) % 100000:05d}",
+        analisis_id=f"ANL-{uuid.uuid4().hex[:8]}",
         texto_entrada=entrada.texto,
     )
 
@@ -116,7 +118,7 @@ def consultar_analisis(analisis_id: str, db: Session = Depends(get_db)) -> Any:
                 "tipo": r.tipo,
                 "nombre": r.nombre,
                 "descripcion": r.descripcion,
-                "actores": r.actores,
+                "actores": json.loads(r.actores) if r.actores else [],
                 "categoria_iso": r.categoria_iso,
                 "metrica_objetiva": r.metrica_objetiva,
                 "valor_umbral": r.valor_umbral,
@@ -139,10 +141,10 @@ def consultar_analisis(analisis_id: str, db: Session = Depends(get_db)) -> Any:
                 "codigo": c.codigo,
                 "nombre": c.nombre,
                 "actor_principal": c.actor_principal,
-                "precondiciones": c.precondiciones,
-                "flujo_principal": c.flujo_principal,
-                "flujos_alternativos": c.flujos_alternativos,
-                "postcondiciones": c.postcondiciones,
+                "precondiciones": json.loads(c.precondiciones) if c.precondiciones else [],
+                "flujo_principal": json.loads(c.flujo_principal) if c.flujo_principal else [],
+                "flujos_alternativos": json.loads(c.flujos_alternativos) if c.flujos_alternativos else [],
+                "postcondiciones": json.loads(c.postcondiciones) if c.postcondiciones else [],
             }
             for c in obj.casos_uso
         ],

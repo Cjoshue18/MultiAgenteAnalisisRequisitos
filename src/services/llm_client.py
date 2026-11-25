@@ -1,3 +1,4 @@
+import time
 from typing import Any, Type, TypeVar, get_origin, get_args
 from pydantic import BaseModel
 from src.core.settings import settings
@@ -23,7 +24,7 @@ class LLMClient:
         from google import genai  # type: ignore
 
         self._client = genai.Client(api_key=api_key)
-        self._model = "gemini-3.8-flash"
+        self._model = "gemini-3.6-flash"
 
     def _resolver_esquema(self, modelo_pydantic: Type[T]) -> Type[BaseModel]:
         """Si el tipo es una lista, crea un modelo contenedor para structured output."""
@@ -57,32 +58,47 @@ class LLMClient:
                 self._es_lista = es_lista
 
             def invoke(self, prompt: str) -> Any:
-                try:
-                    response = self._google_client.models.generate_content(
-                        model=self._model_name,
-                        contents=prompt,
-                        config={
-                            "response_mime_type": "application/json",
-                            "response_schema": schema_model,
-                        },
-                    )
-                    parsed = response.parsed
-                    if parsed is None:
-                        # Fallback: intentar parsear texto como JSON del schema
-                        import json
-                        texto = response.text or "[]"
-                        datos = json.loads(texto)
-                        if self._es_lista:
-                            if isinstance(datos, list):
-                                return [self._model_type(**item) for item in datos]
+                max_retries = 3
+                backoff_seconds = 2
+                for intento in range(1, max_retries + 1):
+                    try:
+                        response = self._google_client.models.generate_content(
+                            model=self._model_name,
+                            contents=prompt,
+                            config={
+                                "response_mime_type": "application/json",
+                                "response_schema": schema_model,
+                            },
+                        )
+                        parsed = response.parsed
+                        if parsed is None:
+                            # Fallback: intentar parsear texto como JSON del schema
+                            import json
+                            texto = response.text or "[]"
+                            datos = json.loads(texto)
+                            if self._es_lista:
+                                if isinstance(datos, list):
+                                    return [self._model_type(**item) for item in datos]
+                                return [self._model_type(**datos)]
                             return [self._model_type(**datos)]
-                        return [self._model_type(**datos)]
 
-                    if self._es_lista:
-                        return list(parsed.items) if hasattr(parsed, "items") else []
-                    return parsed if isinstance(parsed, list) else [parsed]
-                except Exception as exc:
-                    logger.error("Error en llamada a LLM: %s", str(exc))
-                    raise
+                        if self._es_lista:
+                            return list(parsed.items) if hasattr(parsed, "items") else []
+                        return parsed if isinstance(parsed, list) else [parsed]
+                    except Exception as exc:
+                        mensaje = str(exc)
+                        es_sobrecarga = "503" in mensaje or "UNAVAILABLE" in mensaje or "high demand" in mensaje.lower()
+                        logger.error(
+                            "Error en llamada a LLM (intento %d/%d): %s",
+                            intento, max_retries, mensaje,
+                        )
+                        if es_sobrecarga and intento < max_retries:
+                            time.sleep(backoff_seconds * intento)
+                            continue
+                        # Retornar vacío para no romper el grafo; el agente
+                        # registrará el error en el estado si corresponde.
+                        if self._es_lista:
+                            return []
+                        return None
 
         return StructuredLLM(self, modelo_pydantic)

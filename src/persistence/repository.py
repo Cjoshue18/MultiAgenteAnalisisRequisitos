@@ -1,3 +1,4 @@
+import json
 from typing import Optional, Dict, Any, List
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import Session, relationship
@@ -112,7 +113,7 @@ class AnalisisRepository:
             tipo=datos.get("tipo", "RF"),
             nombre=datos.get("nombre", ""),
             descripcion=datos.get("descripcion", ""),
-            actores=datos.get("actores"),
+            actores=json.dumps(datos.get("actores", [])),
             categoria_iso=datos.get("categoria_iso"),
             metrica_objetiva=datos.get("metrica_objetiva"),
             valor_umbral=datos.get("valor_umbral"),
@@ -143,10 +144,10 @@ class AnalisisRepository:
             codigo=datos.get("id", ""),
             nombre=datos.get("nombre", ""),
             actor_principal=datos.get("actor_principal"),
-            precondiciones=datos.get("precondiciones"),
-            flujo_principal=datos.get("flujo_principal"),
-            flujos_alternativos=datos.get("flujos_alternativos"),
-            postcondiciones=datos.get("postcondiciones"),
+            precondiciones=json.dumps(datos.get("precondiciones", [])),
+            flujo_principal=json.dumps(datos.get("flujo_principal", [])),
+            flujos_alternativos=json.dumps(datos.get("flujos_alternativos", [])),
+            postcondiciones=json.dumps(datos.get("postcondiciones", [])),
         )
         self._db.add(db_obj)
         self._db.commit()

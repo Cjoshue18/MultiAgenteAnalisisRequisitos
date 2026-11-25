@@ -1,4 +1,5 @@
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any, Dict, Annotated
+import operator
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
 from src.schemas.functional import RequisitoFuncional
@@ -27,7 +28,7 @@ class GraphState(BaseModel):
     casos_de_uso: List[CasoUso] = Field(default_factory=list)
 
     # Control de flujo y errores
-    errores: List[str] = Field(default_factory=list)
+    errores: Annotated[list[str], operator.add] = Field(default_factory=list)
     etapa_actual: str = Field(default="inicio")
     aprobado_humano: bool = Field(default=False)
     comentarios_analista: Optional[str] = Field(None)

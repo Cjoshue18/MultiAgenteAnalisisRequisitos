@@ -46,19 +46,24 @@ def construir_grafo() -> StateGraph:
     return workflow.compile()
 
 
+def _extraer_lista(estado: Any, clave: str) -> list:
+    """Extrae una lista del estado final, ya sea dict u objeto Pydantic."""
+    if isinstance(estado, dict):
+        return list(estado.get(clave, []))
+    return list(getattr(estado, clave, []))
+
+
 def ejecutar_analisis(texto_usuario: str) -> Dict[str, Any]:
     """Ejecuta el pipeline multiagente completo y retorna el estado final."""
     grafo = construir_grafo()
     estado_inicial = GraphState(texto_usuario=texto_usuario)
     try:
         estado_final = grafo.invoke(estado_inicial)
-        # LangGraph devuelve el estado como instancia de GraphState (Pydantic),
-        # no como dict plano. Acceder por atributos.
-        rf = list(getattr(estado_final, "requisitos_funcionales", []))
-        rnf = list(getattr(estado_final, "requisitos_no_funcionales", []))
-        inc = list(getattr(estado_final, "inconsistencias", []))
-        cus = list(getattr(estado_final, "casos_de_uso", []))
-        errores = list(getattr(estado_final, "errores", []))
+        rf = _extraer_lista(estado_final, "requisitos_funcionales")
+        rnf = _extraer_lista(estado_final, "requisitos_no_funcionales")
+        inc = _extraer_lista(estado_final, "inconsistencias")
+        cus = _extraer_lista(estado_final, "casos_de_uso")
+        errores = _extraer_lista(estado_final, "errores")
         logger.info("Analisis completado: %d RF, %d RNF, %d inconsistencias, %d CUS",
                     len(rf), len(rnf), len(inc), len(cus))
         return {

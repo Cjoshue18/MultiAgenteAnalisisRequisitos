@@ -12,6 +12,9 @@ def nodo_inconsistencias(state: GraphState) -> Dict[str, Any]:
 
     Cruza la entrada del usuario frente a los RF y RNF consolidados.
     """
+    if state.errores:
+        return {}
+
     texto = state.texto_usuario
     rf = state.requisitos_funcionales
     rnf = state.requisitos_no_funcionales

@@ -32,7 +32,6 @@ def main() -> None:
 
     # ===================== SIDEBAR =====================
     with st.sidebar:
-        st.logo("https://streamlit.io/images/brand/streamlit-logo-primary-colormap-darktext.svg", icon_image=":material/assignment:")
         st.title("Menu")
         st.divider()
 
@@ -142,9 +141,9 @@ def main() -> None:
 
                     # Encabezado del detalle
                     col_id, col_estado = st.columns([2, 1])
-                    with col1:
+                    with col_id:
                         st.markdown(f"**ID:** `{analisis_id}`")
-                    with col2:
+                    with col_estado:
                         estado = data["estado"]
                         color = "green" if estado == "APROBADO" else "orange" if estado == "CON_ERRORES" else "blue"
                         st.badge(estado.replace("_", " ").title(), icon=":material/check_circle:" if estado == "APROBADO" else ":material/schedule:", color=color)

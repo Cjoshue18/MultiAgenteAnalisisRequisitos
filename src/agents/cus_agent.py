@@ -13,6 +13,9 @@ def nodo_casos_de_uso(state: GraphState) -> Dict[str, Any]:
 
     Genera actores, precondiciones, flujo principal, alternativos y postcondiciones.
     """
+    if state.errores:
+        return {}
+
     rf = state.requisitos_funcionales
     try:
         llm = LLMClient().with_structured_output(List[CasoUso])

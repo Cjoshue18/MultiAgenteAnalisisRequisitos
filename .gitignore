@@ -218,3 +218,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# SQLite y reportes locales generados
+*.db
+*.db-wal
+*.db-shm
+reportes/
+reportes_demo/
+

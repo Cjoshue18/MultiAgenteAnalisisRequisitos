@@ -1,0 +1,63 @@
+{
+  "analisis_id": "ANA-627E627A",
+  "estado": "APROBADO",
+  "modalidad_modelado": "CUS",
+  "requisitos_funcionales": [
+    {
+      "id": "RF-01",
+      "nombre": "Consultar catálogo",
+      "descripcion": "El sistema debe permitir consultar los libros del catálogo.",
+      "actores": [
+        "Usuario"
+      ],
+      "referencia_texto": "El usuario podrá consultar el catálogo y solicitar préstamos."
+    }
+  ],
+  "requisitos_no_funcionales": [
+    {
+      "id": "RNF-01",
+      "categoria_iso": "Rendimiento",
+      "descripcion": "El sistema debe responder las consultas de catálogo oportunamente.",
+      "metrica_objetiva": "Tiempo de respuesta en segundos",
+      "valor_umbral": "2 s (valor ilustrativo, pendiente de validación)"
+    }
+  ],
+  "inconsistencias": [
+    {
+      "tipo": "vacío",
+      "severidad": "Media",
+      "descripcion": "No se indica la cantidad máxima de préstamos simultáneos.",
+      "pregunta_clarificacion": "¿Cuántos préstamos puede tener un usuario a la vez?",
+      "elementos_afectados": [],
+      "respuesta_analista": null
+    }
+  ],
+  "casos_uso": [
+    {
+      "id": "CUS-01",
+      "nombre": "Consultar catálogo",
+      "actor_principal": "Usuario",
+      "precondiciones": [
+        "El catálogo está disponible"
+      ],
+      "flujo_principal": [
+        "1. El usuario abre el catálogo",
+        "2. El sistema muestra los libros"
+      ],
+      "flujos_alternativos": [
+        "No hay libros disponibles"
+      ],
+      "postcondiciones": [
+        "El usuario visualiza el catálogo"
+      ],
+      "rf_relacionados": [
+        "RF-01"
+      ]
+    }
+  ],
+  "historias_usuario": [],
+  "respuestas_clarificacion": {},
+  "comentarios_analista": "Se revisaron los requisitos funcionales y no funcionales, las inconsistencias y los casos de uso propuestos. Se aprueba el análisis para generar el reporte consolidado.",
+  "nombre_proyecto": "Sistema de Biblioteca Universitaria",
+  "version": 1
+}
